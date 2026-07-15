@@ -1,0 +1,6 @@
+{
+  "name": "URC ICT Asset Registry",
+  "description": "A comprehensive database and lifecycle management tool for ICT assets at URC, featuring real-time dashboard metrics, search/filtering, maintenance logs, and asset tag generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
