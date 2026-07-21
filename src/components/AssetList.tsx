@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { ICTAsset, AssetCategory, AssetStatus } from "../types";
 import { 
   Search, 
@@ -304,117 +305,144 @@ export const AssetList: React.FC<AssetListProps> = ({
     }
   };
 
-  // 5. CSV Bulk Import
-  const handleImportCSVFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 5. Bulk Import (handles both CSV and XLS/XLSX using xlsx library)
+  const handleImportSpreadsheetFile = (e: React.ChangeEvent<HTMLInputElement>, mode: "csv" | "excel") => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Basic validation on extension
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (mode === "csv" && extension !== "csv") {
+      alert("Invalid file format. Please upload a .csv file.");
+      return;
+    }
+    if (mode === "excel" && !["xls", "xlsx"].includes(extension || "")) {
+      alert("Invalid file format. Please upload a .xls or .xlsx file.");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
+      try {
+        const arrayBuffer = event.target?.result as ArrayBuffer;
+        if (!arrayBuffer) return;
 
-      const lines = text.split("\n");
-      const imported: ICTAsset[] = [];
+        const data = new Uint8Array(arrayBuffer);
+        const workbook = XLSX.read(data, { type: "array", cellDates: true });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Read as 2D array of rows
+        const rows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+        const imported: ICTAsset[] = [];
 
-      // Skip header line
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
+        // Skip header row at index 0
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.length === 0) continue;
 
-        // Naive CSV split that handles quotes
-        const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(",");
-        const cleanValues = matches.map(val => val.replace(/^"|"$/g, "").trim());
-
-        if (cleanValues.length >= 7) {
-          const id = cleanValues[0] || `URC-IMPORT-${Date.now()}-${i}`;
-          const name = cleanValues[1] || "Unnamed CSV Asset";
-          const category = (cleanValues[2] as AssetCategory) || AssetCategory.OTHER;
-          const status = (cleanValues[3] as AssetStatus) || AssetStatus.IN_STORAGE;
-          const manufacturer = cleanValues[4] || "Unknown";
-          const model = cleanValues[5] || "Unknown";
-          const serialNumber = cleanValues[6] || "UNKNOWN";
-          const purchaseDate = cleanValues[7] || new Date().toISOString().split("T")[0];
-          
-          let purchaseYear = "";
-          let engravedNumber = "";
-          let operatingSystem = "";
-          let ram = "";
-          let hardDisk = "";
-          let cost = 0;
-          let warrantyExpiry = "";
-          let location = "General Store";
-          let assignedTo = "Unassigned";
-          let department = "Unassigned";
-          let notes = "";
-
-          if (cleanValues.length >= 19) {
-            // New schema (19 columns)
-            purchaseYear = cleanValues[8] || purchaseDate.split("-")[0];
-            engravedNumber = cleanValues[9] || "";
-            operatingSystem = cleanValues[10] || "";
-            ram = cleanValues[11] || "";
-            hardDisk = cleanValues[12] || "";
-            cost = parseFloat(cleanValues[13]) || 0;
-            warrantyExpiry = cleanValues[14] || "";
-            location = cleanValues[15] || "General Store";
-            assignedTo = cleanValues[16] || "Unassigned";
-            department = cleanValues[17] || "Unassigned";
-            notes = cleanValues[18] || "";
-          } else {
-            // Old schema (14 columns)
-            purchaseYear = purchaseDate.split("-")[0];
-            cost = parseFloat(cleanValues[8]) || 0;
-            warrantyExpiry = cleanValues[9] || "";
-            location = cleanValues[10] || "General Store";
-            assignedTo = cleanValues[11] || "Unassigned";
-            department = cleanValues[12] || "Unassigned";
-            notes = cleanValues[13] || "";
-          }
-
-          imported.push({
-            id,
-            name,
-            category,
-            status,
-            manufacturer,
-            model,
-            serialNumber,
-            purchaseDate,
-            purchaseYear,
-            engravedNumber,
-            operatingSystem,
-            ram,
-            hardDisk,
-            cost,
-            warrantyExpiry,
-            location,
-            assignedTo,
-            department,
-            notes,
-            maintenanceLogs: [],
-            assignmentHistory: [
-              {
-                id: `a-${Date.now()}-${i}`,
-                assignedTo,
-                department,
-                assignedDate: purchaseDate,
-                notes: "Imported via bulk CSV upload"
-              }
-            ],
-            lastUpdated: new Date().toISOString()
+          // Clean values from cells
+          const cleanValues = row.map(cell => {
+            if (cell === undefined || cell === null) return "";
+            if (cell instanceof Date) {
+              return cell.toISOString().split("T")[0];
+            }
+            return String(cell).trim();
           });
-        }
-      }
 
-      if (imported.length > 0) {
-        onImportCsv(imported);
-        alert(`Successfully parsed and synchronized ${imported.length} asset records!`);
-      } else {
-        alert("Could not extract valid asset records. Please check your CSV format.");
+          // Check if row has enough cells (at least standard identifiers)
+          if (cleanValues.length >= 7 && cleanValues[0] && cleanValues[1]) {
+            const id = cleanValues[0] || `URC-IMPORT-${Date.now()}-${i}`;
+            const name = cleanValues[1] || "Unnamed Imported Asset";
+            const category = (cleanValues[2] as AssetCategory) || AssetCategory.OTHER;
+            const status = (cleanValues[3] as AssetStatus) || AssetStatus.IN_STORAGE;
+            const manufacturer = cleanValues[4] || "Unknown";
+            const model = cleanValues[5] || "Unknown";
+            const serialNumber = cleanValues[6] || "UNKNOWN";
+            const purchaseDate = cleanValues[7] || new Date().toISOString().split("T")[0];
+            
+            let purchaseYear = "";
+            let engravedNumber = "";
+            let operatingSystem = "";
+            let ram = "";
+            let hardDisk = "";
+            let cost = 0;
+            let warrantyExpiry = "";
+            let location = "General Store";
+            let assignedTo = "Unassigned";
+            let department = "Unassigned";
+            let notes = "";
+
+            if (cleanValues.length >= 19) {
+              purchaseYear = cleanValues[8] || purchaseDate.split("-")[0];
+              engravedNumber = cleanValues[9] || "";
+              operatingSystem = cleanValues[10] || "";
+              ram = cleanValues[11] || "";
+              hardDisk = cleanValues[12] || "";
+              cost = parseFloat(cleanValues[13]) || 0;
+              warrantyExpiry = cleanValues[14] || "";
+              location = cleanValues[15] || "General Store";
+              assignedTo = cleanValues[16] || "Unassigned";
+              department = cleanValues[17] || "Unassigned";
+              notes = cleanValues[18] || "";
+            } else {
+              purchaseYear = purchaseDate.split("-")[0];
+              cost = parseFloat(cleanValues[8]) || 0;
+              warrantyExpiry = cleanValues[9] || "";
+              location = cleanValues[10] || "General Store";
+              assignedTo = cleanValues[11] || "Unassigned";
+              department = cleanValues[12] || "Unassigned";
+              notes = cleanValues[13] || "";
+            }
+
+            imported.push({
+              id,
+              name,
+              category,
+              status,
+              manufacturer,
+              model,
+              serialNumber,
+              purchaseDate,
+              purchaseYear,
+              engravedNumber,
+              operatingSystem,
+              ram,
+              hardDisk,
+              cost,
+              warrantyExpiry,
+              location,
+              assignedTo,
+              department,
+              notes,
+              maintenanceLogs: [],
+              assignmentHistory: [
+                {
+                  id: `a-${Date.now()}-${i}`,
+                  assignedTo,
+                  department,
+                  assignedDate: purchaseDate,
+                  notes: `Imported via bulk ${mode.toUpperCase()} upload`
+                }
+              ],
+              lastUpdated: new Date().toISOString()
+            });
+          }
+        }
+
+        if (imported.length > 0) {
+          onImportCsv(imported);
+          alert(`Successfully parsed and synchronized ${imported.length} asset records from the ${mode.toUpperCase()} file!`);
+        } else {
+          alert(`Could not extract valid asset records. Please ensure your ${mode.toUpperCase()} matches the expected headers format.`);
+        }
+      } catch (err) {
+        console.error("Spreadsheet import error:", err);
+        alert(`An error occurred while parsing the ${mode.toUpperCase()} file. Please check that it is not corrupted.`);
       }
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
   };
 
   return (
@@ -517,22 +545,44 @@ export const AssetList: React.FC<AssetListProps> = ({
               )}
             </div>
 
-            {/* CSV Upload */}
+            {/* Spreadsheet Import (CSV / Excel Selector) */}
             {isAdmin && (
-              <label
-                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-gray-50 rounded-lg text-xs font-semibold text-slate-600 transition-colors cursor-pointer shrink-0 bg-white"
-                title="Import assets from CSV spreadsheet"
-                id="import-csv-label"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Import CSV
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleImportCSVFile}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex rounded-lg border border-slate-200 bg-white shadow-xs overflow-hidden shrink-0">
+                <span className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold text-slate-500 bg-slate-50 border-r border-slate-200">
+                  <Upload className="w-3.5 h-3.5" />
+                  Import:
+                </span>
+                
+                {/* CSV Option */}
+                <label
+                  className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors cursor-pointer border-r border-slate-200"
+                  title="Import assets from a CSV spreadsheet file"
+                  id="import-csv-label"
+                >
+                  CSV
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => handleImportSpreadsheetFile(e, "csv")}
+                    className="hidden"
+                  />
+                </label>
+
+                {/* Excel Option */}
+                <label
+                  className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-50 text-xs font-semibold text-slate-600 transition-colors cursor-pointer"
+                  title="Import assets from an Excel (.xls, .xlsx) file"
+                  id="import-excel-label"
+                >
+                  XLS / XLSX
+                  <input
+                    type="file"
+                    accept=".xls,.xlsx"
+                    onChange={(e) => handleImportSpreadsheetFile(e, "excel")}
+                    className="hidden"
+                  />
+                </label>
+              </div>
             )}
 
             {/* Register Trigger */}
