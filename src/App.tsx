@@ -272,7 +272,7 @@ export default function App() {
     if (confirm("Are you absolutely sure you want to reset the database? This will restore the default URC inventory demo logs and wipe custom edits.")) {
       saveAssetsState(initialAssets);
       addAuditLog("Database hard reset triggered.", "danger");
-      showToast("Database successfully reverted to core academic demo dataset.");
+      showToast("Database successfully reverted to URC railway inventory dataset.");
     }
   };
 
@@ -474,7 +474,7 @@ export default function App() {
               <button
                 onClick={handleResetDatabase}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer border border-slate-200 bg-white shadow-xs"
-                title="Revert database to core academic demo dataset"
+                title="Revert database to URC railway inventory dataset"
                 id="reset-db-btn"
               >
                 <RefreshCcw className="w-4 h-4" />
@@ -578,7 +578,7 @@ export default function App() {
                     if (confirm("Are you absolutely sure you want to reset the database? This will restore the default URC inventory demo logs and wipe custom edits.")) {
                       saveAssetsState(initialAssets);
                       addAuditLog("Hard database reset from Admin Panel", "danger");
-                      showToast("Database successfully reverted to core academic demo dataset.");
+                      showToast("Database successfully reverted to URC railway inventory dataset.");
                     }
                   }}
                 />
@@ -592,7 +592,7 @@ export default function App() {
           <div className="flex justify-between items-center">
             <p className="font-semibold flex items-center gap-1.5 text-slate-500">
               <Server className="w-3.5 h-3.5 text-indigo-500" />
-              URC ICT Registry • Academic Year 2026
+              URC ICT Registry • Asset Management 2026
             </p>
             <p className="flex items-center gap-1 font-mono text-[10px] text-slate-400 font-bold">
               <Clock className="w-3.5 h-3.5" />

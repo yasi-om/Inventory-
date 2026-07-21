@@ -52,7 +52,7 @@ export const initialAssets: ICTAsset[] = [
   },
   {
     id: "URC-ICT-2024-002",
-    name: "HPC Research Node 1",
+    name: "Locomotive Traffic Controller PC",
     category: AssetCategory.SERVER,
     status: AssetStatus.IN_USE,
     manufacturer: "Dell",
@@ -66,10 +66,10 @@ export const initialAssets: ICTAsset[] = [
     hardDisk: "4TB NVMe SSD RAID1",
     cost: 46250000,
     warrantyExpiry: "2027-06-20",
-    location: "Research Lab, Room 302",
-    assignedTo: "Dr. Arthur Pendelton",
-    department: "Computer Science & Engineering",
-    notes: "High Performance Computing node with dual Intel Xeon and 256GB RAM for AI modeling research.",
+    location: "Nalukolongo Workshop, Control Tower",
+    assignedTo: "Eng. Arthur Ssewankambo",
+    department: "Operations & Signaling",
+    notes: "High performance server coordinating live locomotive routing and transit scheduling systems.",
     maintenanceLogs: [
       {
         id: "m-3",
@@ -83,17 +83,17 @@ export const initialAssets: ICTAsset[] = [
     assignmentHistory: [
       {
         id: "a-2",
-        assignedTo: "Dr. Arthur Pendelton",
-        department: "Computer Science & Engineering",
+        assignedTo: "Eng. Arthur Ssewankambo",
+        department: "Operations & Signaling",
         assignedDate: "2024-06-20",
-        notes: "Assigned for machine learning research lab projects."
+        notes: "Assigned for locomotive dispatch tracking and signaling."
       }
     ],
     lastUpdated: "2024-11-05T11:15:00Z"
   },
   {
     id: "URC-ICT-2025-015",
-    name: "CS Lab Laptop #04",
+    name: "Locomotive Diagnostic Notebook",
     category: AssetCategory.LAPTOP,
     status: AssetStatus.IN_USE,
     manufacturer: "Lenovo",
@@ -107,18 +107,18 @@ export const initialAssets: ICTAsset[] = [
     hardDisk: "512GB NVMe SSD",
     cost: 4070000,
     warrantyExpiry: "2028-01-15",
-    location: "Computer Lab 2, Room 105",
-    assignedTo: "CS Lab Pool",
-    department: "Computer Science",
-    notes: "Lab machine for student programming practicals.",
+    location: "Nalukolongo Workshop, Bay B",
+    assignedTo: "Workshop Field Pool",
+    department: "Mechanical Engineering",
+    notes: "Diagnostic notebook loaded with engine tuning software and ECU firmware flash utilities.",
     maintenanceLogs: [],
     assignmentHistory: [
       {
         id: "a-3",
-        assignedTo: "CS Lab Pool",
-        department: "Computer Science",
+        assignedTo: "Workshop Field Pool",
+        department: "Mechanical Engineering",
         assignedDate: "2025-01-15",
-        notes: "Added to computer lab pool for class scheduling."
+        notes: "Added to workshop field pool for railway engine diagnostics."
       }
     ],
     lastUpdated: "2025-01-15T09:00:00Z"
@@ -166,7 +166,7 @@ export const initialAssets: ICTAsset[] = [
   },
   {
     id: "URC-ICT-2023-112",
-    name: "Admissions Office Printer",
+    name: "Freight Booking Office Printer",
     category: AssetCategory.PRINTER,
     status: AssetStatus.IN_USE,
     manufacturer: "HP",
@@ -180,10 +180,10 @@ export const initialAssets: ICTAsset[] = [
     hardDisk: "None",
     cost: 2035000,
     warrantyExpiry: "2024-10-05",
-    location: "Admissions Hall, Ground Floor",
-    assignedTo: "Admissions Team",
-    department: "Student Registry",
-    notes: "Multifunction network printer, scanner, and copier.",
+    location: "Kampala Central Station, Cargo Office",
+    assignedTo: "Cargo Booking Team",
+    department: "Freight & Commercial Services",
+    notes: "Heavy duty network printer for issuing passenger tickets and cargo manifests.",
     maintenanceLogs: [
       {
         id: "m-5",
@@ -205,10 +205,10 @@ export const initialAssets: ICTAsset[] = [
     assignmentHistory: [
       {
         id: "a-5",
-        assignedTo: "Admissions Team",
-        department: "Student Registry",
+        assignedTo: "Cargo Booking Team",
+        department: "Freight & Commercial Services",
         assignedDate: "2023-10-06",
-        notes: "Installed at Admissions reception counter."
+        notes: "Installed at Cargo Desk counter."
       }
     ],
     lastUpdated: "2024-10-15T10:00:00Z"
@@ -256,7 +256,7 @@ export const initialAssets: ICTAsset[] = [
   },
   {
     id: "URC-ICT-2022-098",
-    name: "Main Lecture Hall Projector",
+    name: "Transit Control Room Projector",
     category: AssetCategory.PROJECTOR,
     status: AssetStatus.IN_STORAGE,
     manufacturer: "Epson",
@@ -272,8 +272,8 @@ export const initialAssets: ICTAsset[] = [
     warrantyExpiry: "2024-09-02",
     location: "IT Storage Room B",
     assignedTo: "IT Support Services",
-    department: "Academic Facilities",
-    notes: "Deinstalled from Main Auditorium due to installation of interactive panel. Kept as hot-spare.",
+    department: "Operations & Signaling",
+    notes: "Deinstalled from central operations room due to installation of interactive video wall panel. Kept as hot-spare.",
     maintenanceLogs: [
       {
         id: "m-8",
@@ -287,16 +287,16 @@ export const initialAssets: ICTAsset[] = [
     assignmentHistory: [
       {
         id: "a-7",
-        assignedTo: "Lecturer Pool",
-        department: "Academic Facilities",
+        assignedTo: "Operations Pool",
+        department: "Operations & Signaling",
         assignedDate: "2022-09-05",
         returnedDate: "2025-03-01",
-        notes: "Mounted in Lecture Theatre 1. Deinstalled in March 2025."
+        notes: "Mounted in main dispatch center. Deinstalled in March 2025."
       },
       {
         id: "a-8",
         assignedTo: "IT Support Services",
-        department: "Academic Facilities",
+        department: "Operations & Signaling",
         assignedDate: "2025-03-01",
         notes: "Placed in storage as a spare unit."
       }
@@ -305,7 +305,7 @@ export const initialAssets: ICTAsset[] = [
   },
   {
     id: "URC-ICT-2025-088",
-    name: "Registrar VoIP Office Phone",
+    name: "Station Master VoIP Desk Phone",
     category: AssetCategory.TELEPHONE,
     status: AssetStatus.IN_USE,
     manufacturer: "Poly",
@@ -319,16 +319,16 @@ export const initialAssets: ICTAsset[] = [
     hardDisk: "None",
     cost: 666000,
     warrantyExpiry: "2027-05-02",
-    location: "Registrar Office, Room 101B",
-    assignedTo: "Johnathan Mercer",
-    department: "Student Registry",
-    notes: "PoE VoIP Desk Phone for international admissions calls.",
+    location: "Kampala Central Station, Master Office",
+    assignedTo: "Station Master John Mercer",
+    department: "Station Operations",
+    notes: "PoE VoIP Desk Phone for direct communications with locomotive traffic dispatchers.",
     maintenanceLogs: [],
     assignmentHistory: [
       {
         id: "a-9",
-        assignedTo: "Johnathan Mercer",
-        department: "Student Registry",
+        assignedTo: "Station Master John Mercer",
+        department: "Station Operations",
         assignedDate: "2025-05-03",
         notes: "Setup and provisioned with SIP line 4201."
       }
@@ -337,7 +337,7 @@ export const initialAssets: ICTAsset[] = [
   },
   {
     id: "URC-ICT-2024-080",
-    name: "Staff Desktop - Library Desk 1",
+    name: "Staff Desktop - Cargo Desk 1",
     category: AssetCategory.DESKTOP,
     status: AssetStatus.LOST,
     manufacturer: "Lenovo",
@@ -351,18 +351,18 @@ export const initialAssets: ICTAsset[] = [
     hardDisk: "256GB NVMe SSD",
     cost: 2664000,
     warrantyExpiry: "2027-10-10",
-    location: "Public Library, Helpdesk 1",
-    assignedTo: "Library Staff Desk 1",
-    department: "Library Services",
-    notes: "Reported missing during June 2026 audit. Suspected theft from unsecured reception area.",
+    location: "Malaba Border Post, Cargo Terminal",
+    assignedTo: "Cargo Clearance Desk 1",
+    department: "Freight & Commercial Services",
+    notes: "Reported missing during June 2026 audit. Suspected theft from unsecured border terminal lobby.",
     maintenanceLogs: [],
     assignmentHistory: [
       {
         id: "a-10",
-        assignedTo: "Library Staff Desk 1",
-        department: "Library Services",
+        assignedTo: "Cargo Clearance Desk 1",
+        department: "Freight & Commercial Services",
         assignedDate: "2024-10-12",
-        notes: "Assigned for student helpdesk navigation."
+        notes: "Assigned for cargo manifest entry."
       }
     ],
     lastUpdated: "2026-06-30T10:00:00Z"

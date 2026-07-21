@@ -152,7 +152,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Standard viewers and researchers use this quick code to enter.
+                  Standard station agents and staff members use this quick code to enter.
                 </p>
                 {pinError && <p className="text-[10px] text-red-500 font-bold mt-1">{pinError}</p>}
               </div>
@@ -308,7 +308,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="p-3.5 bg-red-50/30 border border-red-100 rounded-xl flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold text-slate-800">Restore/Reset Registry Database</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Wipe custom configurations and load initial Academic Demo Registry.</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Wipe custom configurations and load initial URC Railway Registry.</p>
                 </div>
                 <button
                   onClick={onResetDatabase}
