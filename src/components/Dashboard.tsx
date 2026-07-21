@@ -19,11 +19,19 @@ interface DashboardProps {
   assets: ICTAsset[];
   onSelectAsset: (assetId: string) => void;
   onNavigateToTab: (tab: "inventory" | "maintenance") => void;
+  onFilterByStatus?: (status: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ assets, onSelectAsset, onNavigateToTab }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ assets, onSelectAsset, onNavigateToTab, onFilterByStatus }) => {
   const [hoveredStatus, setHoveredStatus] = useState<string | null>(null);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+
+  const handleStatusClick = (status: string) => {
+    if (onFilterByStatus) {
+      onFilterByStatus(status);
+    }
+    onNavigateToTab("inventory");
+  };
 
   // 1. Calculations & Metrics
   const totalAssets = assets.length;
@@ -202,6 +210,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, onSelectAsset, onN
                     className="transition-all duration-300 cursor-pointer"
                     onMouseEnter={() => setHoveredStatus(item.name)}
                     onMouseLeave={() => setHoveredStatus(null)}
+                    onClick={() => handleStatusClick(item.name)}
                   />
                 );
               })}
@@ -228,11 +237,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ assets, onSelectAsset, onN
               return (
                 <div
                   key={status}
-                  className={`flex items-center justify-between p-1.5 rounded-lg transition-colors ${
-                    isHovered ? "bg-gray-50" : ""
+                  className={`flex items-center justify-between p-1.5 rounded-lg transition-colors cursor-pointer hover:bg-slate-100 ${
+                    isHovered ? "bg-gray-100" : ""
                   }`}
                   onMouseEnter={() => setHoveredStatus(status)}
                   onMouseLeave={() => setHoveredStatus(null)}
+                  onClick={() => handleStatusClick(status)}
                 >
                   <div className="flex items-center gap-2">
                     <span 

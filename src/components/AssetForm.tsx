@@ -18,6 +18,11 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
   const [model, setModel] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [purchaseDate, setPurchaseDate] = useState("");
+  const [purchaseYear, setPurchaseYear] = useState("");
+  const [engravedNumber, setEngravedNumber] = useState("");
+  const [operatingSystem, setOperatingSystem] = useState("");
+  const [ram, setRam] = useState("");
+  const [hardDisk, setHardDisk] = useState("");
   const [cost, setCost] = useState<number>(0);
   const [warrantyExpiry, setWarrantyExpiry] = useState("");
   const [location, setLocation] = useState("");
@@ -37,6 +42,11 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
       setModel(asset.model);
       setSerialNumber(asset.serialNumber);
       setPurchaseDate(asset.purchaseDate);
+      setPurchaseYear(asset.purchaseYear || "");
+      setEngravedNumber(asset.engravedNumber || "");
+      setOperatingSystem(asset.operatingSystem || "");
+      setRam(asset.ram || "");
+      setHardDisk(asset.hardDisk || "");
       setCost(asset.cost);
       setWarrantyExpiry(asset.warrantyExpiry);
       setLocation(asset.location);
@@ -67,6 +77,11 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
       // Default dates
       const today = new Date().toISOString().split("T")[0];
       setPurchaseDate(today);
+      setPurchaseYear(String(currentYear));
+      setEngravedNumber("");
+      setOperatingSystem("");
+      setRam("");
+      setHardDisk("");
       
       // Set 3 year default warranty
       const threeYearsLater = new Date();
@@ -91,6 +106,7 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
     if (!model.trim()) newErrors.model = "Model is required.";
     if (!serialNumber.trim()) newErrors.serialNumber = "Serial Number is required.";
     if (!purchaseDate) newErrors.purchaseDate = "Purchase Date is required.";
+    if (!purchaseYear.trim()) newErrors.purchaseYear = "Year of Purchase is required.";
     if (cost < 0) newErrors.cost = "Cost must be a positive number.";
     if (!location.trim()) newErrors.location = "Location is required.";
 
@@ -111,6 +127,11 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
       model: model.trim(),
       serialNumber: serialNumber.trim().toUpperCase(),
       purchaseDate,
+      purchaseYear: purchaseYear.trim(),
+      engravedNumber: engravedNumber.trim().toUpperCase(),
+      operatingSystem: operatingSystem.trim(),
+      ram: ram.trim(),
+      hardDisk: hardDisk.trim(),
       cost,
       warrantyExpiry,
       location: location.trim(),
@@ -204,16 +225,16 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
                 )}
               </div>
 
-              {/* Serial Number */}
+              {/* Serial Number / Service Tag */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                  Serial Number <span className="text-red-500">*</span>
+                  Serial Number / Service Tag <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="Manufacturer Serial Number"
+                  placeholder="Manufacturer Serial or Service Tag"
                   className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-200 ${
                     errors.serialNumber ? "border-red-300 bg-red-50/20" : ""
                   }`}
@@ -226,25 +247,41 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
               </div>
             </div>
 
-            {/* Asset Name */}
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                Asset Name / Description <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. CS Lab Laptop #04, Main Hall Projector"
-                className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-200 ${
-                  errors.name ? "border-red-300 bg-red-50/20" : ""
-                }`}
-              />
-              {errors.name && (
-                <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {errors.name}
-                </p>
-              )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Asset Name */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Asset Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. CS Lab Laptop #04, Main Hall Projector"
+                  className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-200 ${
+                    errors.name ? "border-red-300 bg-red-50/20" : ""
+                  }`}
+                />
+                {errors.name && (
+                  <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {errors.name}
+                  </p>
+                )}
+              </div>
+
+              {/* Engraved Number */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Engraved ID / Tag Number
+                </label>
+                <input
+                  type="text"
+                  value={engravedNumber}
+                  onChange={(e) => setEngravedNumber(e.target.value)}
+                  placeholder="e.g. ENG-LAP-2025-042"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -327,15 +364,60 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
             </div>
           </div>
 
+          {/* NEW Section 2.5: Technical Specs (Operating System, RAM, Hard Disk) */}
+          <div className="space-y-4">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-1.5">
+              Technical Hardware Specs
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Operating System */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Operating System</label>
+                <input
+                  type="text"
+                  value={operatingSystem}
+                  onChange={(e) => setOperatingSystem(e.target.value)}
+                  placeholder="e.g. Windows 11 Pro, macOS Sonoma"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* RAM */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">RAM (Memory)</label>
+                <input
+                  type="text"
+                  value={ram}
+                  onChange={(e) => setRam(e.target.value)}
+                  placeholder="e.g. 16GB DDR4, 32GB DDR5"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Hard Disk */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Hard Disk (Storage)</label>
+                <input
+                  type="text"
+                  value={hardDisk}
+                  onChange={(e) => setHardDisk(e.target.value)}
+                  placeholder="e.g. 512GB NVMe SSD, 1TB HDD"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Section 3: Value and Coverages */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100 pb-1.5">
               Procurement & Warranty
             </h4>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Cost */}
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Purchase Cost (UGX)</label>
                 <input
                   type="number"
@@ -358,6 +440,30 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
                 />
               </div>
 
+              {/* Year of Purchase */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                  Year of Purchase <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={purchaseYear}
+                  onChange={(e) => setPurchaseYear(e.target.value.replace(/\D/g, ""))}
+                  placeholder="e.g. 2026"
+                  className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 border-gray-200 ${
+                    errors.purchaseYear ? "border-red-300 bg-red-50/20" : ""
+                  }`}
+                />
+                {errors.purchaseYear && (
+                  <p className="text-[11px] text-red-500 font-medium mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" /> {errors.purchaseYear}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Warranty Expiry */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Warranty Expiration</label>
@@ -399,9 +505,9 @@ export const AssetForm: React.FC<AssetFormProps> = ({ asset, onSave, onClose, ex
                 )}
               </div>
 
-              {/* Assigned To */}
+              {/* Assigned To / User */}
               <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Assigned Custodian / User</label>
+                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">User / Custodian</label>
                 <input
                   type="text"
                   value={assignedTo}

@@ -42,12 +42,17 @@ export interface ICTAsset {
   status: AssetStatus;
   manufacturer: string;
   model: string;
-  serialNumber: string;
+  serialNumber: string; // Serial number / Service tag
   purchaseDate: string;
+  purchaseYear: string; // Year of purchase
+  engravedNumber: string; // Engraved number
+  operatingSystem: string; // Operating system
+  ram: string; // RAM size/type
+  hardDisk: string; // Hard Disk size/type
   cost: number;
   warrantyExpiry: string;
   location: string;
-  assignedTo: string;
+  assignedTo: string; // User
   department: string;
   notes: string;
   maintenanceLogs: MaintenanceLog[];

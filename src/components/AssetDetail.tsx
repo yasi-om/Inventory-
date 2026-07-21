@@ -25,6 +25,7 @@ interface AssetDetailProps {
   onDelete: (assetId: string) => void;
   onUpdateLogs: (assetId: string, updatedLogs: MaintenanceLog[]) => void;
   onQuickStatusChange: (assetId: string, newStatus: AssetStatus) => void;
+  isAdmin?: boolean;
 }
 
 export const AssetDetail: React.FC<AssetDetailProps> = ({ 
@@ -33,7 +34,8 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
   onEdit, 
   onDelete, 
   onUpdateLogs,
-  onQuickStatusChange
+  onQuickStatusChange,
+  isAdmin = false
 }) => {
   const [activeTab, setActiveTab] = useState<"specs" | "maintenance" | "history" | "print">("specs");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -226,6 +228,13 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
                     <span className="text-gray-400 font-semibold">Asset Tag:</span>
                     <span className="col-span-2 font-mono font-bold text-gray-800">{asset.id}</span>
 
+                    {asset.engravedNumber && (
+                      <>
+                        <span className="text-gray-400 font-semibold">Engraved ID:</span>
+                        <span className="col-span-2 font-mono font-bold text-indigo-600">{asset.engravedNumber}</span>
+                      </>
+                    )}
+
                     <span className="text-gray-400 font-semibold">Model Category:</span>
                     <span className="col-span-2 font-bold text-gray-800">{asset.category}</span>
 
@@ -237,6 +246,27 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
 
                     <span className="text-gray-400 font-semibold">Serial Number:</span>
                     <span className="col-span-2 font-mono font-bold text-indigo-600 tracking-wide select-all">{asset.serialNumber}</span>
+
+                    {asset.operatingSystem && (
+                      <>
+                        <span className="text-gray-400 font-semibold">Operating System:</span>
+                        <span className="col-span-2 font-medium text-gray-800">{asset.operatingSystem}</span>
+                      </>
+                    )}
+
+                    {asset.ram && (
+                      <>
+                        <span className="text-gray-400 font-semibold">System RAM:</span>
+                        <span className="col-span-2 font-medium text-gray-800">{asset.ram}</span>
+                      </>
+                    )}
+
+                    {asset.hardDisk && (
+                      <>
+                        <span className="text-gray-400 font-semibold">Hard Disk:</span>
+                        <span className="col-span-2 font-medium text-gray-800">{asset.hardDisk}</span>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -256,6 +286,13 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
                       <Calendar className="w-3.5 h-3.5 text-gray-400" />
                       {new Date(asset.purchaseDate).toLocaleDateString()}
                     </span>
+
+                    {asset.purchaseYear && (
+                      <>
+                        <span className="text-gray-400 font-semibold">Purchase Year:</span>
+                        <span className="col-span-2 font-bold text-gray-800">{asset.purchaseYear}</span>
+                      </>
+                    )}
 
                     <span className="text-gray-400 font-semibold">Warranty Expiry:</span>
                     <span className={`col-span-2 font-bold flex items-center gap-1.5 ${
@@ -499,32 +536,38 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
         <div className="p-6 border-t border-gray-100 flex items-center justify-between bg-white flex-col sm:flex-row gap-4">
           
           {/* Left Block: Delete Safety */}
-          {confirmDelete ? (
-            <div className="flex items-center gap-2 p-1.5 bg-red-50 border border-red-100 rounded-xl w-full sm:w-auto">
-              <span className="text-[11px] text-red-700 font-bold px-2">Permanently purge?</span>
+          {isAdmin ? (
+            confirmDelete ? (
+              <div className="flex items-center gap-2 p-1.5 bg-red-50 border border-red-100 rounded-xl w-full sm:w-auto">
+                <span className="text-[11px] text-red-700 font-bold px-2">Permanently purge?</span>
+                <button
+                  onClick={() => onDelete(asset.id)}
+                  className="px-2.5 py-1 bg-red-600 text-white hover:bg-red-700 rounded-lg text-xs font-semibold cursor-pointer"
+                  id="confirm-delete-btn"
+                >
+                  Yes, Purge
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-2.5 py-1 border border-gray-200 hover:bg-white text-gray-500 rounded-lg text-xs font-semibold cursor-pointer bg-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={() => onDelete(asset.id)}
-                className="px-2.5 py-1 bg-red-600 text-white hover:bg-red-700 rounded-lg text-xs font-semibold cursor-pointer"
-                id="confirm-delete-btn"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100 px-3 py-1.5 rounded-xl transition-all self-start cursor-pointer"
+                id="trigger-delete-btn"
               >
-                Yes, Purge
+                <Trash2 className="w-3.5 h-3.5" />
+                Purge Record
               </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="px-2.5 py-1 border border-gray-200 hover:bg-white text-gray-500 rounded-lg text-xs font-semibold cursor-pointer bg-white"
-              >
-                Cancel
-              </button>
-            </div>
+            )
           ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-100 px-3 py-1.5 rounded-xl transition-all self-start cursor-pointer"
-              id="trigger-delete-btn"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Purge Record
-            </button>
+            <div className="text-slate-400 font-bold text-[10px] tracking-wide uppercase bg-slate-100 px-2.5 py-1.5 rounded-lg flex items-center gap-1">
+              <span>🔒 Staff Mode (Read Only Purge)</span>
+            </div>
           )}
 
           {/* Right Block: General Options */}

@@ -6,6 +6,8 @@ import { AssetList } from "./components/AssetList";
 import { AssetDetail } from "./components/AssetDetail";
 import { AssetForm } from "./components/AssetForm";
 import { MaintenanceTab } from "./components/MaintenanceTab";
+import { Login } from "./components/Login";
+import { AdminPanel, AuditLogEntry } from "./components/AdminPanel";
 import { 
   ShieldCheck, 
   LayoutDashboard, 
@@ -19,7 +21,9 @@ import {
   Trash2,
   CheckCircle,
   Clock,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert,
+  LogOut
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -27,14 +31,23 @@ const STORAGE_KEY = "urc_ict_assets";
 
 export default function App() {
   const [assets, setAssets] = useState<ICTAsset[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "inventory" | "maintenance">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "inventory" | "maintenance" | "admin">("dashboard");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingAsset, setEditingAsset] = useState<ICTAsset | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Security & Authentication States
+  const [authRole, setAuthRole] = useState<"admin" | "staff" | null>(null);
+  const [staffPin, setStaffPin] = useState<string>("1234");
+  const [adminUsername, setAdminUsername] = useState<string>("admin");
+  const [adminPasswordHash, setAdminPasswordHash] = useState<string>("adminpassword");
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
   // 1. Initial State Sync
   useEffect(() => {
+    // 1a. Load Assets
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
@@ -46,6 +59,50 @@ export default function App() {
     } else {
       setAssets(initialAssets);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(initialAssets));
+    }
+
+    // 1b. Load Authentication/Credentials
+    const role = localStorage.getItem("urc_ict_auth_role") as "admin" | "staff" | null;
+    if (role) {
+      setAuthRole(role);
+    }
+
+    const pin = localStorage.getItem("urc_ict_staff_pin") || "1234";
+    setStaffPin(pin);
+
+    const user = localStorage.getItem("urc_ict_admin_username") || "admin";
+    setAdminUsername(user);
+
+    const pass = localStorage.getItem("urc_ict_admin_password") || "adminpassword";
+    setAdminPasswordHash(pass);
+
+    const storedLogs = localStorage.getItem("urc_ict_audit_logs");
+    if (storedLogs) {
+      try {
+        setAuditLogs(JSON.parse(storedLogs));
+      } catch (e) {
+        setAuditLogs([
+          {
+            id: `log-${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString("en-GB", { hour12: false }),
+            action: "Audit log parsed error. Resetting.",
+            user: "System Core",
+            type: "info"
+          }
+        ]);
+      }
+    } else {
+      const initialLogs: AuditLogEntry[] = [
+        {
+          id: `log-${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString("en-GB", { hour12: false }),
+          action: "Asset Registry security database initialized.",
+          user: "System Core",
+          type: "info"
+        }
+      ];
+      setAuditLogs(initialLogs);
+      localStorage.setItem("urc_ict_audit_logs", JSON.stringify(initialLogs));
     }
   }, []);
 
@@ -62,6 +119,23 @@ export default function App() {
     }, 4000);
   };
 
+  // Helper to add session security log entries
+  const addAuditLog = (action: string, type: "info" | "success" | "warning" | "danger" = "info", customUser?: string) => {
+    const activeUser = customUser || (authRole === "admin" ? "Administrator" : "Staff User");
+    const newLog: AuditLogEntry = {
+      id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      timestamp: new Date().toLocaleTimeString("en-GB", { hour12: false }),
+      action,
+      user: activeUser,
+      type
+    };
+    setAuditLogs(prev => {
+      const updated = [newLog, ...prev];
+      localStorage.setItem("urc_ict_audit_logs", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   // 2. State Mutators & Handlers
   
   // Create / Update Asset
@@ -71,9 +145,11 @@ export default function App() {
 
     if (exists) {
       updated = assets.map(a => a.id === savedAsset.id ? savedAsset : a);
+      addAuditLog(`Updated details for asset ${savedAsset.id}`, "success");
       showToast(`Asset details for ${savedAsset.id} successfully updated.`);
     } else {
       updated = [savedAsset, ...assets];
+      addAuditLog(`Registered and enrolled asset ${savedAsset.id}`, "success");
       showToast(`Asset ${savedAsset.id} successfully enrolled into database.`);
     }
 
@@ -89,6 +165,7 @@ export default function App() {
   const handleDeleteAsset = (assetId: string) => {
     const updated = assets.filter(a => a.id !== assetId);
     saveAssetsState(updated);
+    addAuditLog(`Permanently purged asset record ${assetId}`, "danger");
     setSelectedAssetId(null);
     showToast(`Asset record ${assetId} permanently purged from registry.`);
   };
@@ -106,6 +183,7 @@ export default function App() {
       return asset;
     });
     saveAssetsState(updated);
+    addAuditLog(`Synchronized maintenance logs for asset ${assetId}`, "info");
     showToast(`Maintenance log ticket synchronized for asset ${assetId}.`);
   };
 
@@ -133,6 +211,7 @@ export default function App() {
       return asset;
     });
     saveAssetsState(updated);
+    addAuditLog(`Toggled operational status for ${assetId} to: "${newStatus}"`, "warning");
     showToast(`Status for ${assetId} toggled to ${newStatus}.`);
   };
 
@@ -174,6 +253,7 @@ export default function App() {
       return asset;
     });
     saveAssetsState(updated);
+    addAuditLog(`Resolved repair ticket for asset ${assetId} to status: "${resolvedStatus}"`, "success");
     showToast(`Maintenance ticket resolved. Asset ${assetId} is now marked ${resolvedStatus}.`);
   };
 
@@ -183,6 +263,7 @@ export default function App() {
     const filteredImported = imported.filter(imp => !assets.some(a => a.id.toLowerCase() === imp.id.toLowerCase()));
     const updated = [...filteredImported, ...assets];
     saveAssetsState(updated);
+    addAuditLog(`Bulk merged ${filteredImported.length} assets via spreadsheet import`, "success");
     showToast(`Merged ${filteredImported.length} non-duplicate assets into database.`);
   };
 
@@ -190,6 +271,7 @@ export default function App() {
   const handleResetDatabase = () => {
     if (confirm("Are you absolutely sure you want to reset the database? This will restore the default URC inventory demo logs and wipe custom edits.")) {
       saveAssetsState(initialAssets);
+      addAuditLog("Database hard reset triggered.", "danger");
       showToast("Database successfully reverted to core academic demo dataset.");
     }
   };
@@ -198,6 +280,60 @@ export default function App() {
   const activeAsset = useMemo(() => {
     return assets.find(a => a.id === selectedAssetId) || null;
   }, [assets, selectedAssetId]);
+
+  const handleLoginSuccess = (role: "admin" | "staff") => {
+    setAuthRole(role);
+    localStorage.setItem("urc_ict_auth_role", role);
+    addAuditLog(`${role === "admin" ? "Administrator" : "Staff User"} logged in successfully.`, "success", role === "admin" ? "Administrator" : "Staff User");
+    showToast(`Welcome! Logged in as ${role === "admin" ? "Administrator" : "Staff User"}.`);
+    setActiveTab("dashboard");
+  };
+
+  const handleLogout = () => {
+    addAuditLog("Active session terminated.", "info");
+    setAuthRole(null);
+    localStorage.removeItem("urc_ict_auth_role");
+    showToast("Logged out successfully.");
+  };
+
+  const handleUpdateCredentials = (newPin: string, newUsername: string, newPasswordHash: string) => {
+    setStaffPin(newPin);
+    localStorage.setItem("urc_ict_staff_pin", newPin);
+    setAdminUsername(newUsername);
+    localStorage.setItem("urc_ict_admin_username", newUsername);
+    setAdminPasswordHash(newPasswordHash);
+    localStorage.setItem("urc_ict_admin_password", newPasswordHash);
+    addAuditLog("Security credentials modified by Admin.", "warning");
+    showToast("Security credentials successfully saved!");
+  };
+
+  if (authRole === null) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
+        <Login
+          staffPin={staffPin}
+          adminUsername={adminUsername}
+          adminPasswordHash={adminPasswordHash}
+          onLoginSuccess={handleLoginSuccess}
+        />
+        {/* Dynamic Toast Feedback Overlay inside Login */}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="fixed top-4 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-800 text-white px-5 py-3 rounded-2xl shadow-2xl text-xs font-bold tracking-wide flex items-center gap-2.5 z-50 pointer-events-none"
+              id="toast-notification-login"
+            >
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-ping" />
+              <span>{toastMessage}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row overflow-hidden" id="app-root-container">
@@ -265,19 +401,44 @@ export default function App() {
             <Wrench className="w-4 h-4 opacity-80" />
             Maintenance Log
           </button>
+
+          {authRole === "admin" && (
+            <button
+              onClick={() => setActiveTab("admin")}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer text-left ${
+                activeTab === "admin"
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+              }`}
+              id="tab-admin-btn"
+            >
+              <ShieldAlert className="w-4 h-4 opacity-80" />
+              Admin Panel
+            </button>
+          )}
         </nav>
 
         {/* User profile section */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 space-y-2">
           <div className="flex items-center gap-3 p-2 rounded bg-slate-800/40 border border-slate-800/40">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white border border-slate-600">
-              AD
+            <div className="w-8 h-8 rounded-full bg-slate-750 flex items-center justify-center text-xs font-bold text-white border border-slate-600">
+              {authRole === "admin" ? "AD" : "ST"}
             </div>
-            <div className="overflow-hidden">
-              <p className="text-xs font-semibold text-white truncate">Admin User</p>
-              <p className="text-[10px] text-slate-400 truncate">IT Operations</p>
+            <div className="overflow-hidden flex-1">
+              <p className="text-xs font-semibold text-white truncate">
+                {authRole === "admin" ? "Administrator" : "Staff User"}
+              </p>
+              <p className="text-[10px] text-slate-400 truncate">Uganda Railway Corporation</p>
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 border border-slate-700 hover:border-slate-500 hover:bg-slate-800 text-slate-300 rounded-lg text-xs font-semibold cursor-pointer transition-all"
+            id="sidebar-logout-btn"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            Logout Session
+          </button>
         </div>
       </aside>
 
@@ -292,6 +453,7 @@ export default function App() {
               {activeTab === "dashboard" && "ICT Dashboard"}
               {activeTab === "inventory" && "Asset Registry"}
               {activeTab === "maintenance" && "Maintenance Desk"}
+              {activeTab === "admin" && "Administrative Panel"}
             </h1>
           </div>
           
@@ -308,14 +470,16 @@ export default function App() {
               Add Asset
             </button>
 
-            <button
-              onClick={handleResetDatabase}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer border border-slate-200 bg-white shadow-xs"
-              title="Revert database to core academic demo dataset"
-              id="reset-db-btn"
-            >
-              <RefreshCcw className="w-4 h-4" />
-            </button>
+            {authRole === "admin" && (
+              <button
+                onClick={handleResetDatabase}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer border border-slate-200 bg-white shadow-xs"
+                title="Revert database to core academic demo dataset"
+                id="reset-db-btn"
+              >
+                <RefreshCcw className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </header>
 
@@ -342,6 +506,22 @@ export default function App() {
             <Wrench className="w-4 h-4" />
             <span>Service</span>
           </button>
+          {authRole === "admin" && (
+            <button
+              onClick={() => setActiveTab("admin")}
+              className={`flex flex-col items-center gap-1 cursor-pointer transition-colors ${activeTab === "admin" ? "text-indigo-600" : "text-slate-400 hover:text-slate-600"}`}
+            >
+              <ShieldAlert className="w-4 h-4" />
+              <span>Admin</span>
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center gap-1 cursor-pointer text-slate-400 hover:text-rose-600 transition-colors"
+          >
+            <LogOut className="w-4 h-4 text-rose-500" />
+            <span>Logout</span>
+          </button>
         </div>
 
         {/* Actual view stage container */}
@@ -359,6 +539,7 @@ export default function App() {
                   assets={assets} 
                   onSelectAsset={(id) => setSelectedAssetId(id)}
                   onNavigateToTab={(tab) => setActiveTab(tab)}
+                  onFilterByStatus={(status) => setStatusFilter(status)}
                 />
               )}
 
@@ -371,6 +552,9 @@ export default function App() {
                     setShowForm(true);
                   }}
                   onImportCsv={handleImportCsv}
+                  selectedStatus={statusFilter}
+                  onSelectedStatusChange={(status) => setStatusFilter(status)}
+                  isAdmin={authRole === "admin"}
                 />
               )}
 
@@ -379,6 +563,24 @@ export default function App() {
                   assets={assets} 
                   onSelectAsset={(id) => setSelectedAssetId(id)}
                   onResolveRepair={handleResolveRepair}
+                />
+              )}
+
+              {activeTab === "admin" && authRole === "admin" && (
+                <AdminPanel
+                  assets={assets}
+                  auditLogs={auditLogs}
+                  staffPin={staffPin}
+                  adminUsername={adminUsername}
+                  adminPassword={adminPasswordHash}
+                  onUpdateCredentials={handleUpdateCredentials}
+                  onResetDatabase={() => {
+                    if (confirm("Are you absolutely sure you want to reset the database? This will restore the default URC inventory demo logs and wipe custom edits.")) {
+                      saveAssetsState(initialAssets);
+                      addAuditLog("Hard database reset from Admin Panel", "danger");
+                      showToast("Database successfully reverted to core academic demo dataset.");
+                    }
+                  }}
                 />
               )}
             </motion.div>
@@ -415,6 +617,7 @@ export default function App() {
           onDelete={handleDeleteAsset}
           onUpdateLogs={handleUpdateLogs}
           onQuickStatusChange={handleQuickStatusChange}
+          isAdmin={authRole === "admin"}
         />
       )}
 

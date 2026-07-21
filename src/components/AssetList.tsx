@@ -30,17 +30,33 @@ interface AssetListProps {
   onSelectAsset: (assetId: string) => void;
   onAddAssetTrigger: () => void;
   onImportCsv: (imported: ICTAsset[]) => void;
+  selectedStatus?: string;
+  onSelectedStatusChange?: (status: string) => void;
+  isAdmin?: boolean;
 }
 
 export const AssetList: React.FC<AssetListProps> = ({ 
   assets, 
   onSelectAsset, 
   onAddAssetTrigger,
-  onImportCsv
+  onImportCsv,
+  selectedStatus: propSelectedStatus,
+  onSelectedStatusChange,
+  isAdmin = false
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  
+  const [selectedStatusLocal, setSelectedStatusLocal] = useState<string>("all");
+  const selectedStatus = propSelectedStatus !== undefined ? propSelectedStatus : selectedStatusLocal;
+  const setSelectedStatus = (val: string) => {
+    setSelectedStatusLocal(val);
+    if (onSelectedStatusChange) {
+      onSelectedStatusChange(val);
+    }
+  };
+
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [selectedWarranty, setSelectedWarranty] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("lastUpdated-desc");
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
@@ -140,40 +156,152 @@ export const AssetList: React.FC<AssetListProps> = ({
     }
   };
 
-  // 4. CSV Bulk Export
-  const handleExportCSV = () => {
-    const headers = ["Asset Tag ID", "Name", "Category", "Status", "Manufacturer", "Model", "Serial Number", "Purchase Date", "Cost (USD)", "Warranty Expiry", "Location", "Assigned Custodian", "Department", "Notes"];
-    const csvRows = [headers.join(",")];
+  // 4. Multi-Format Bulk Export (CSV & XLS)
+  const handleExport = (format: "csv" | "xls") => {
+    const headers = [
+      "Asset Tag ID", 
+      "Name", 
+      "Category", 
+      "Status", 
+      "Manufacturer", 
+      "Model", 
+      "Serial Number / Service Tag", 
+      "Purchase Date", 
+      "Year of Purchase", 
+      "Engraved ID", 
+      "Operating System", 
+      "RAM", 
+      "Hard Disk", 
+      "Cost (UGX)", 
+      "Warranty Expiry", 
+      "Location", 
+      "Assigned Custodian", 
+      "Department", 
+      "Notes"
+    ];
 
-    assets.forEach(asset => {
-      const values = [
-        `"${asset.id}"`,
-        `"${asset.name.replace(/"/g, '""')}"`,
-        `"${asset.category}"`,
-        `"${asset.status}"`,
-        `"${asset.manufacturer}"`,
-        `"${asset.model}"`,
-        `"${asset.serialNumber}"`,
-        `"${asset.purchaseDate}"`,
-        asset.cost,
-        `"${asset.warrantyExpiry || ""}"`,
-        `"${asset.location.replace(/"/g, '""')}"`,
-        `"${asset.assignedTo.replace(/"/g, '""')}"`,
-        `"${asset.department.replace(/"/g, '""')}"`,
-        `"${(asset.notes || "").replace(/"/g, '""').replace(/\n/g, " ")}"`
-      ];
-      csvRows.push(values.join(","));
-    });
+    if (format === "csv") {
+      const csvRows = [headers.join(",")];
+      assets.forEach(asset => {
+        const values = [
+          `"${asset.id}"`,
+          `"${asset.name.replace(/"/g, '""')}"`,
+          `"${asset.category}"`,
+          `"${asset.status}"`,
+          `"${asset.manufacturer}"`,
+          `"${asset.model}"`,
+          `"${asset.serialNumber}"`,
+          `"${asset.purchaseDate}"`,
+          `"${asset.purchaseYear || ""}"`,
+          `"${asset.engravedNumber || ""}"`,
+          `"${asset.operatingSystem || ""}"`,
+          `"${asset.ram || ""}"`,
+          `"${asset.hardDisk || ""}"`,
+          asset.cost,
+          `"${asset.warrantyExpiry || ""}"`,
+          `"${asset.location.replace(/"/g, '""')}"`,
+          `"${asset.assignedTo.replace(/"/g, '""')}"`,
+          `"${asset.department.replace(/"/g, '""')}"`,
+          `"${(asset.notes || "").replace(/"/g, '""').replace(/\n/g, " ")}"`
+        ];
+        csvRows.push(values.join(","));
+      });
 
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `URC_ICT_Assets_Backup_${new Date().toISOString().split("T")[0]}.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `URC_ICT_Assets_Backup_${new Date().toISOString().split("T")[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // XLS format - Standard HTML table layout that Excel renders natively
+      const escapeHTML = (str: string | number) => {
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      };
+
+      const rows: string[] = [];
+      assets.forEach(asset => {
+        const rowCells = [
+          asset.id,
+          asset.name,
+          asset.category,
+          asset.status,
+          asset.manufacturer,
+          asset.model,
+          asset.serialNumber,
+          asset.purchaseDate,
+          asset.purchaseYear || "",
+          asset.engravedNumber || "",
+          asset.operatingSystem || "",
+          asset.ram || "",
+          asset.hardDisk || "",
+          asset.cost,
+          asset.warrantyExpiry || "",
+          asset.location,
+          asset.assignedTo,
+          asset.department,
+          asset.notes || ""
+        ].map(val => `<td>${escapeHTML(val)}</td>`);
+        rows.push(`<tr>${rowCells.join("")}</tr>`);
+      });
+
+      const html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="utf-8" />
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                  <x:Name>Assets Registry</x:Name>
+                  <x:WorksheetOptions>
+                    <x:DisplayGridlines/>
+                  </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <style>
+            table { border-collapse: collapse; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; }
+            th { background-color: #4f46e5; color: white; font-weight: bold; padding: 6px; border: 1px solid #cbd5e1; }
+            td { padding: 6px; border: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <h2>URC ICT Assets Registry Export</h2>
+          <p>Export Date: ${new Date().toLocaleDateString()}</p>
+          <table>
+            <thead>
+              <tr>${headers.map(h => `<th>${escapeHTML(h)}</th>`).join("")}</tr>
+            </thead>
+            <tbody>
+              ${rows.join("\n")}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `URC_ICT_Assets_Backup_${new Date().toISOString().split("T")[0]}.xls`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   // 5. CSV Bulk Import
@@ -207,12 +335,42 @@ export const AssetList: React.FC<AssetListProps> = ({
           const model = cleanValues[5] || "Unknown";
           const serialNumber = cleanValues[6] || "UNKNOWN";
           const purchaseDate = cleanValues[7] || new Date().toISOString().split("T")[0];
-          const cost = parseFloat(cleanValues[8]) || 0;
-          const warrantyExpiry = cleanValues[9] || "";
-          const location = cleanValues[10] || "General Store";
-          const assignedTo = cleanValues[11] || "Unassigned";
-          const department = cleanValues[12] || "Unassigned";
-          const notes = cleanValues[13] || "";
+          
+          let purchaseYear = "";
+          let engravedNumber = "";
+          let operatingSystem = "";
+          let ram = "";
+          let hardDisk = "";
+          let cost = 0;
+          let warrantyExpiry = "";
+          let location = "General Store";
+          let assignedTo = "Unassigned";
+          let department = "Unassigned";
+          let notes = "";
+
+          if (cleanValues.length >= 19) {
+            // New schema (19 columns)
+            purchaseYear = cleanValues[8] || purchaseDate.split("-")[0];
+            engravedNumber = cleanValues[9] || "";
+            operatingSystem = cleanValues[10] || "";
+            ram = cleanValues[11] || "";
+            hardDisk = cleanValues[12] || "";
+            cost = parseFloat(cleanValues[13]) || 0;
+            warrantyExpiry = cleanValues[14] || "";
+            location = cleanValues[15] || "General Store";
+            assignedTo = cleanValues[16] || "Unassigned";
+            department = cleanValues[17] || "Unassigned";
+            notes = cleanValues[18] || "";
+          } else {
+            // Old schema (14 columns)
+            purchaseYear = purchaseDate.split("-")[0];
+            cost = parseFloat(cleanValues[8]) || 0;
+            warrantyExpiry = cleanValues[9] || "";
+            location = cleanValues[10] || "General Store";
+            assignedTo = cleanValues[11] || "Unassigned";
+            department = cleanValues[12] || "Unassigned";
+            notes = cleanValues[13] || "";
+          }
 
           imported.push({
             id,
@@ -223,6 +381,11 @@ export const AssetList: React.FC<AssetListProps> = ({
             model,
             serialNumber,
             purchaseDate,
+            purchaseYear,
+            engravedNumber,
+            operatingSystem,
+            ram,
+            hardDisk,
             cost,
             warrantyExpiry,
             location,
@@ -305,32 +468,72 @@ export const AssetList: React.FC<AssetListProps> = ({
               </button>
             </div>
 
-            {/* CSV Backup */}
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-gray-50 rounded-lg text-xs font-semibold text-slate-600 transition-colors cursor-pointer shrink-0 bg-white"
-              title="Backup assets as CSV spreadsheet"
-              id="export-csv-btn"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Backup CSV
-            </button>
+            {/* Export Dropdown */}
+            <div className="relative inline-block text-left shrink-0">
+              <button
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-gray-50 rounded-lg text-xs font-semibold text-slate-600 transition-colors cursor-pointer shrink-0 bg-white"
+                title="Export assets registry spreadsheet"
+                id="export-dropdown-btn"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-500" />
+                Export Assets
+                <span className="text-[9px] text-gray-400">▼</span>
+              </button>
+
+              {showExportDropdown && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setShowExportDropdown(false)} 
+                  />
+                  <div className="absolute right-0 mt-1 w-48 rounded-xl shadow-lg bg-white border border-slate-200 ring-1 ring-black/5 z-50 divide-y divide-slate-100 focus:outline-none animate-fade-in">
+                    <div className="py-1">
+                      <button
+                        onClick={() => {
+                          handleExport("csv");
+                          setShowExportDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 font-medium cursor-pointer"
+                        id="export-csv-opt"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                        Export as CSV (.csv)
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleExport("xls");
+                          setShowExportDropdown(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 font-medium cursor-pointer"
+                        id="export-xls-opt"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        Export as Excel (.xls)
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* CSV Upload */}
-            <label
-              className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-gray-50 rounded-lg text-xs font-semibold text-slate-600 transition-colors cursor-pointer shrink-0 bg-white"
-              title="Import assets from CSV spreadsheet"
-              id="import-csv-label"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Import CSV
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleImportCSVFile}
-                className="hidden"
-              />
-            </label>
+            {isAdmin && (
+              <label
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:bg-gray-50 rounded-lg text-xs font-semibold text-slate-600 transition-colors cursor-pointer shrink-0 bg-white"
+                title="Import assets from CSV spreadsheet"
+                id="import-csv-label"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                Import CSV
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleImportCSVFile}
+                  className="hidden"
+                />
+              </label>
+            )}
 
             {/* Register Trigger */}
             <button
