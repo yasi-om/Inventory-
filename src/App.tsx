@@ -36,7 +36,23 @@ export default function App() {
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingAsset, setEditingAsset] = useState<ICTAsset | null>(null);
+  const [formInitialStatus, setFormInitialStatus] = useState<AssetStatus | undefined>(undefined);
+  const [formIsServiceIntake, setFormIsServiceIntake] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const handleOpenAddAsset = () => {
+    setEditingAsset(null);
+    setFormInitialStatus(undefined);
+    setFormIsServiceIntake(false);
+    setShowForm(true);
+  };
+
+  const handleOpenServiceIntake = () => {
+    setEditingAsset(null);
+    setFormInitialStatus(AssetStatus.UNDER_REPAIR);
+    setFormIsServiceIntake(true);
+    setShowForm(true);
+  };
 
   // Security & Authentication States
   const [authRole, setAuthRole] = useState<"admin" | "staff" | null>(null);
@@ -213,6 +229,42 @@ export default function App() {
     saveAssetsState(updated);
     addAuditLog(`Toggled operational status for ${assetId} to: "${newStatus}"`, "warning");
     showToast(`Status for ${assetId} toggled to ${newStatus}.`);
+  };
+
+  // Add a new maintenance/servicing record directly to an asset
+  const handleAddMaintenanceRecord = (
+    assetId: string, 
+    newLog: MaintenanceLog, 
+    newStatus?: AssetStatus
+  ) => {
+    const updated = assets.map(asset => {
+      if (asset.id === assetId) {
+        const updatedLogs = [newLog, ...asset.maintenanceLogs];
+        const nextStatus = newStatus || asset.status;
+        
+        const history = [...asset.assignmentHistory];
+        history.push({
+          id: `a-${Date.now()}`,
+          assignedTo: asset.assignedTo || "URC Operations",
+          department: asset.department || "Engineering & Maintenance",
+          assignedDate: newLog.date,
+          notes: `Servicing recorded (${newLog.type}) by ${newLog.technician}: ${newLog.notes}`
+        });
+
+        return {
+          ...asset,
+          status: nextStatus,
+          maintenanceLogs: updatedLogs,
+          assignmentHistory: history,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      return asset;
+    });
+
+    saveAssetsState(updated);
+    addAuditLog(`Recorded ${newLog.type} servicing for asset ${assetId} (Technician: ${newLog.technician})`, "info");
+    showToast(`Service & maintenance log recorded for ${assetId}.`);
   };
 
   // Resolve active repair log callback
@@ -547,10 +599,8 @@ export default function App() {
                 <AssetList 
                   assets={assets} 
                   onSelectAsset={(id) => setSelectedAssetId(id)}
-                  onAddAssetTrigger={() => {
-                    setEditingAsset(null);
-                    setShowForm(true);
-                  }}
+                  onAddAssetTrigger={handleOpenAddAsset}
+                  onAddServiceIntakeTrigger={handleOpenServiceIntake}
                   onImportCsv={handleImportCsv}
                   selectedStatus={statusFilter}
                   onSelectedStatusChange={(status) => setStatusFilter(status)}
@@ -563,6 +613,8 @@ export default function App() {
                   assets={assets} 
                   onSelectAsset={(id) => setSelectedAssetId(id)}
                   onResolveRepair={handleResolveRepair}
+                  onAddMaintenanceRecord={handleAddMaintenanceRecord}
+                  onAddServiceIntakeTrigger={handleOpenServiceIntake}
                 />
               )}
 
@@ -625,10 +677,14 @@ export default function App() {
       {showForm && (
         <AssetForm 
           asset={editingAsset}
+          initialStatus={formInitialStatus}
+          isServiceIntake={formIsServiceIntake}
           onSave={handleSaveAsset}
           onClose={() => {
             setShowForm(false);
             setEditingAsset(null);
+            setFormInitialStatus(undefined);
+            setFormIsServiceIntake(false);
           }}
           existingAssets={assets}
         />

@@ -23,13 +23,15 @@ import {
   Projector,
   Phone,
   HelpCircle,
-  Plus
+  Plus,
+  Wrench
 } from "lucide-react";
 
 interface AssetListProps {
   assets: ICTAsset[];
   onSelectAsset: (assetId: string) => void;
   onAddAssetTrigger: () => void;
+  onAddServiceIntakeTrigger?: () => void;
   onImportCsv: (imported: ICTAsset[]) => void;
   selectedStatus?: string;
   onSelectedStatusChange?: (status: string) => void;
@@ -40,13 +42,17 @@ export const AssetList: React.FC<AssetListProps> = ({
   assets, 
   onSelectAsset, 
   onAddAssetTrigger,
+  onAddServiceIntakeTrigger,
   onImportCsv,
   selectedStatus: propSelectedStatus,
   onSelectedStatusChange,
   isAdmin = false
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [inventoryTab, setInventoryTab] = useState<"operational" | "serviced" | "all">("operational");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
   
   const [selectedStatusLocal, setSelectedStatusLocal] = useState<string>("all");
   const selectedStatus = propSelectedStatus !== undefined ? propSelectedStatus : selectedStatusLocal;
@@ -63,6 +69,31 @@ export const AssetList: React.FC<AssetListProps> = ({
   const [viewMode, setViewMode] = useState<"grid" | "table">("table");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
+
+  // Extract unique departments and locations for dropdown options
+  const uniqueDepartments = useMemo(() => {
+    const set = new Set<string>();
+    assets.forEach(a => { if (a.department && a.department !== "Unassigned") set.add(a.department); });
+    return Array.from(set).sort();
+  }, [assets]);
+
+  const uniqueLocations = useMemo(() => {
+    const set = new Set<string>();
+    assets.forEach(a => { if (a.location) set.add(a.location); });
+    return Array.from(set).sort();
+  }, [assets]);
+
+  const isFilterActive = searchTerm !== "" || selectedCategory !== "all" || selectedStatus !== "all" || selectedWarranty !== "all" || selectedDepartment !== "all" || selectedLocation !== "all";
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setSelectedWarranty("all");
+    setSelectedDepartment("all");
+    setSelectedLocation("all");
+    setCurrentPage(1);
+  };
 
   // Render category icons dynamically
   const getCategoryIcon = (cat: AssetCategory) => {
@@ -108,8 +139,18 @@ export const AssetList: React.FC<AssetListProps> = ({
         asset.assignedTo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         asset.department.toLowerCase().includes(searchTerm.toLowerCase());
 
+      // Pool Separation Filter
+      let matchesInventoryTab = true;
+      if (inventoryTab === "operational") {
+        matchesInventoryTab = asset.status !== AssetStatus.UNDER_REPAIR;
+      } else if (inventoryTab === "serviced") {
+        matchesInventoryTab = asset.status === AssetStatus.UNDER_REPAIR || asset.maintenanceLogs.length > 0;
+      }
+
       const matchesCategory = selectedCategory === "all" || asset.category === selectedCategory;
       const matchesStatus = selectedStatus === "all" || asset.status === selectedStatus;
+      const matchesDepartment = selectedDepartment === "all" || asset.department === selectedDepartment;
+      const matchesLocation = selectedLocation === "all" || asset.location === selectedLocation;
       
       let matchesWarranty = true;
       if (selectedWarranty === "active") {
@@ -118,9 +159,9 @@ export const AssetList: React.FC<AssetListProps> = ({
         matchesWarranty = asset.warrantyExpiry ? new Date(asset.warrantyExpiry) < currentDate : false;
       }
 
-      return matchesSearch && matchesCategory && matchesStatus && matchesWarranty;
+      return matchesSearch && matchesInventoryTab && matchesCategory && matchesStatus && matchesDepartment && matchesLocation && matchesWarranty;
     });
-  }, [assets, searchTerm, selectedCategory, selectedStatus, selectedWarranty]);
+  }, [assets, searchTerm, inventoryTab, selectedCategory, selectedStatus, selectedDepartment, selectedLocation, selectedWarranty]);
 
   // 2. Sorting Logic
   const sortedAssets = useMemo(() => {
@@ -451,6 +492,65 @@ export const AssetList: React.FC<AssetListProps> = ({
       {/* 1. Filtering & Search Header Bar */}
       <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm space-y-4">
         
+        {/* Pool Switcher Bar: Operational vs Service Depot vs All */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => { setInventoryTab("operational"); setCurrentPage(1); }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                inventoryTab === "operational"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              id="tab-operational-inventory"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+              <span>Main Active Inventory</span>
+              <span className="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[10px] font-mono">
+                {assets.filter(a => a.status !== AssetStatus.UNDER_REPAIR).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setInventoryTab("serviced"); setCurrentPage(1); }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                inventoryTab === "serviced"
+                  ? "bg-white text-amber-950 shadow-xs border border-amber-300"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              id="tab-serviced-depot"
+            >
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span>Service & Repair Depot</span>
+              <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded text-[10px] font-mono font-bold">
+                {assets.filter(a => a.status === AssetStatus.UNDER_REPAIR || a.maintenanceLogs.length > 0).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setInventoryTab("all"); setCurrentPage(1); }}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                inventoryTab === "all"
+                  ? "bg-white text-slate-900 shadow-xs border border-slate-200/80"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              id="tab-all-inventory"
+            >
+              <span>All Equipment</span>
+              <span className="px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded text-[10px] font-mono">
+                {assets.length}
+              </span>
+            </button>
+          </div>
+
+          <div className="text-[11px] font-medium text-slate-500 px-2 flex items-center gap-1.5">
+            <span className="font-semibold text-slate-700">Display Pool:</span>
+            {inventoryTab === "operational" && "Operational assets (Excludes hardware under repair/service)"}
+            {inventoryTab === "serviced" && "Hardware under service, repair, or maintenance logs"}
+            {inventoryTab === "all" && "Complete hardware catalog"}
+          </div>
+        </div>
+
         {/* Row A: Search input & Add triggers */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
@@ -585,14 +685,25 @@ export const AssetList: React.FC<AssetListProps> = ({
               </div>
             )}
 
-            {/* Register Trigger */}
+            {/* Service Intake Trigger */}
+            <button
+              onClick={onAddServiceIntakeTrigger || onAddAssetTrigger}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer shrink-0"
+              title="Enroll a device received for service/repair directly into the Service Depot using full asset registration form"
+              id="add-service-intake-trigger"
+            >
+              <Wrench className="w-3.5 h-3.5" />
+              <span>+ Service Intake</span>
+            </button>
+
+            {/* Register Operational Asset Trigger */}
             <button
               onClick={onAddAssetTrigger}
               className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm cursor-pointer hover:shadow shrink-0"
               id="add-new-asset-trigger"
             >
               <Plus className="w-3.5 h-3.5" />
-              Register Asset
+              <span>Register Asset</span>
             </button>
           </div>
 
@@ -641,6 +752,42 @@ export const AssetList: React.FC<AssetListProps> = ({
             </select>
           </div>
 
+          {/* Department Dropdown */}
+          <div className="flex items-center gap-1">
+            <select
+              value={selectedDepartment}
+              onChange={(e) => {
+                setSelectedDepartment(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-gray-50 font-semibold text-slate-600 focus:outline-none cursor-pointer max-w-[170px] truncate"
+              id="department-filter-select"
+            >
+              <option value="all">All Departments</option>
+              {uniqueDepartments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Location Dropdown */}
+          <div className="flex items-center gap-1">
+            <select
+              value={selectedLocation}
+              onChange={(e) => {
+                setSelectedLocation(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-gray-50 font-semibold text-slate-600 focus:outline-none cursor-pointer max-w-[170px] truncate"
+              id="location-filter-select"
+            >
+              <option value="all">All Station Locations</option>
+              {uniqueLocations.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Warranty Status */}
           <div className="flex items-center gap-1">
             <select
@@ -657,6 +804,17 @@ export const AssetList: React.FC<AssetListProps> = ({
               <option value="expired">Expired Warranties</option>
             </select>
           </div>
+
+          {/* Reset Filters button */}
+          {isFilterActive && (
+            <button
+              onClick={handleResetFilters}
+              className="px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer shrink-0 border border-indigo-100"
+              id="reset-filters-btn"
+            >
+              Reset Filters ✕
+            </button>
+          )}
 
           {/* Sort Selection */}
           <div className="ml-auto flex items-center gap-1.5 shrink-0">

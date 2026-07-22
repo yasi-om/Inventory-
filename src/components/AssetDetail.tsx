@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as XLSX from "xlsx";
 import { ICTAsset, AssetStatus, MaintenanceLog } from "../types";
 import { BarcodeGenerator } from "./BarcodeGenerator";
 import { 
@@ -15,7 +16,8 @@ import {
   Clock, 
   AlertTriangle,
   History,
-  Tag
+  Tag,
+  FileSpreadsheet
 } from "lucide-react";
 
 interface AssetDetailProps {
@@ -88,6 +90,35 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
     setLogTechnician("");
     setLogNotes("");
     setLogError("");
+  };
+
+  const handleExportAssetXls = () => {
+    if (asset.maintenanceLogs.length === 0) {
+      alert("No service records logged for this asset to export.");
+      return;
+    }
+
+    const logRows = asset.maintenanceLogs.map(log => ({
+      "Asset Tag (ID)": asset.id,
+      "Asset Name": asset.name,
+      "Category": asset.category,
+      "Manufacturer & Model": `${asset.manufacturer} ${asset.model}`,
+      "Serial Number": asset.serialNumber,
+      "Service Date": log.date,
+      "Service Type": log.type,
+      "Technician / Vendor": log.technician,
+      "Service Cost (UGX)": log.cost,
+      "Service Notes": log.notes,
+      "Current Status": asset.status,
+      "Location": asset.location,
+      "Department": asset.department
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(logRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Service History");
+
+    XLSX.writeFile(workbook, `URC_Maintenance_History_${asset.id}_${new Date().toISOString().split("T")[0]}.xlsx`);
   };
 
   return (
@@ -340,14 +371,25 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
                     {new Intl.NumberFormat("en-UG", { style: "currency", currency: "UGX", maximumFractionDigits: 0 }).format(totalMaintenanceCost)}
                   </span>
                 </div>
-                <button
-                  onClick={() => setShowLogForm(!showLogForm)}
-                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  id="add-maintenance-log-btn"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {showLogForm ? "Collapse Form" : "Log Service Action"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportAssetXls}
+                    className="px-3 py-2 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs bg-white"
+                    title="Export this asset's maintenance history to Excel (.xlsx)"
+                    id="export-asset-xls-btn"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                    Export XLS
+                  </button>
+                  <button
+                    onClick={() => setShowLogForm(!showLogForm)}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    id="add-maintenance-log-btn"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {showLogForm ? "Collapse Form" : "Log Service Action"}
+                  </button>
+                </div>
               </div>
 
               {/* Add Log Form */}
